@@ -32,6 +32,36 @@ variable "ostemplate" {
 variable "network_gateway" { type = string }
 variable "network_cidr" { type = number }
 
+variable "etcd_profile" {
+  type    = string
+  default = "production" 
+}
+
+variable "hardware_profiles" {
+  type = map(object({
+    cores  = number
+    memory = number
+    size   = string
+  }))
+  default = {
+    minimum = {
+      cores  = 2
+      memory = 2048 # 2GB RAM
+      size   = "20G"
+    }
+    production = {
+      cores  = 4
+      memory = 8192 # 8GB RAM
+      size   = "30G"
+    }
+    enterprise = {
+      cores  = 4
+      memory = 16384 # 16GB RAM
+      size   = "40G"
+    }
+  }
+}
+
 provider "proxmox" {
   pm_api_url                  = var.pm_api_url
   pm_tls_insecure             = var.pm_tls_insecure
@@ -100,7 +130,7 @@ resource "proxmox_lxc" "k8s-masters" {
 
 
 resource "proxmox_lxc" "k8s-workers" {  
-  count = 3
+  count = 5
   target_node  = var.target_node
   hostname     = "heroku-${format("%02d", count.index + 1)}"
   ostemplate   = var.ostemplate
