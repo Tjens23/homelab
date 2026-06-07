@@ -1,16 +1,10 @@
 { config, pkgs, modulesPath, lib, ... }: {
   imports = [ 
-    (modulesPath + "/virtualisation/proxmox-lxc.nix") 
+    (modulesPath + "/virtualisation/proxmox-lxc.nix")
+    ./k3s-common-configuration.nix
   ];
 
   boot.isContainer = true;
-
-  # Nødvendige netværksindstillinger for K8s i LXC
-  boot.kernel.sysctl = {
-    "net.bridge.bridge-nf-call-iptables" = 1;
-    "net.bridge.bridge-nf-call-ip6tables" = 1;
-    "net.ipv4.ip_forward" = 1;
-  };
 
   services.k3s = {
     enable = true;

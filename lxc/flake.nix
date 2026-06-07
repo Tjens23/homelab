@@ -54,7 +54,7 @@
                   listenPeerUrls           = lib.mkForce [ "http://${ip}:2380" ];
                   initialAdvertisePeerUrls = lib.mkForce [ "http://${ip}:2380" ];
                   initialCluster           = lib.mkForce etcdCluster;
-                  initialClusterState      = lib.mkForce (if i == 1 then "existing" else "new");
+                  initialClusterState      = lib.mkForce (if i == 0 then "new" else "existing");
                   initialClusterToken      = etcdToken;
                 };
 
@@ -100,6 +100,12 @@
                   virtualRouterId = 51;
                   priority = 100 - (i * 10); # hele-01=100, hele-02=90, hele-03=80
                   virtualIps = [{ addr = "${k3sVip}/24"; }];
+                  extraConfig = ''
+                    authentication {
+                      auth_type PASS
+                      auth_pass dd11oypT
+                    }
+                  '';
                 };
               };
 
@@ -116,6 +122,7 @@
           inherit system;
           modules = [ 
             ./configuration.nix 
+            ./k3s-common-configuration.nix
             ({ ... }: {
               networking.hostName = name;
               services.k3s = {
