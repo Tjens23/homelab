@@ -1,0 +1,9 @@
+terraform/.terraform.lock.hcl
+lxc/result
+lxc/flake.lock
+terraform/terraform.tfstate
+terraform/.terraform/providers/registry.terraform.io/telmate/proxmox/3.0.2-rc07/linux_amd64/terraform-provider-proxmox_v3.0.2-rc07
+terraform/terraform.tfvars
+terraform/terraform.tfstate.backup
+terraform/.terraform/providers/registry.terraform.io/telmate/proxmox/3.0.2-rc07/linux_amd64/LICENSE
+terraform/.terraform/providers/registry.terraform.io/telmate/proxmox/3.0.2-rc07/linux_amd64/README.md
