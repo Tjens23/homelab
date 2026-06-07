@@ -13,10 +13,10 @@
       workerCount = 5; 
 
       k3sVip    = "192.168.2.120";
+      masterIP  = "192.168.2.132"; 
       k3sToken  = "DIT_K3S_TOKEN";
       etcdToken = "etcd-k8s-token";
 
-      # Statiske IP-adresser for etcd-noder (mDNS virker ikke i minimalistiske containere)
       etcdIPs = [ "192.168.2.163" "192.168.2.176" "192.168.2.186" ];
 
       etcdCluster = builtins.genList (i:
@@ -32,9 +32,6 @@
 
       padInt = i: lib.fixedWidthString 2 "0" (builtins.toString i);
 
-      # =======================================================================
-      # DYNAMISKE GENERATOR-FUNKTIONER
-      # =======================================================================
       makeEtcdNodes = builtins.listToAttrs (builtins.genList (i:
         let
           name = "porcian-${padInt (i + 1)}";
@@ -51,16 +48,12 @@
 
                 services.etcd = {
                   enable = true;
-                  # Navn SKAL sættes — ellers bruger alle noder "default" og cluster fejler
                   name = name;
-                  # Brug kun den specifikke IP — 0.0.0.0 tilføjes automatisk og giver konflikt
                   listenClientUrls         = lib.mkForce [ "http://${ip}:2379" "http://127.0.0.1:2379" ];
                   advertiseClientUrls      = lib.mkForce [ "http://${ip}:2379" ];
                   listenPeerUrls           = lib.mkForce [ "http://${ip}:2380" ];
                   initialAdvertisePeerUrls = lib.mkForce [ "http://${ip}:2380" ];
                   initialCluster           = lib.mkForce etcdCluster;
-                  # "new" for alle noder på første bootstrap.
-                  # Sæt til "existing" for noder der rejoiner efter at cluster allerede er dannet.
                   initialClusterState      = lib.mkForce (if i == 1 then "existing" else "new");
                   initialClusterToken      = etcdToken;
                 };
@@ -84,16 +77,34 @@
               services.k3s = {
                 token = k3sToken;
                 extraFlags = toString (
-                  (if i == 0 then [ "--cluster-init" ] else []) ++ [
+                  # --cluster-init er KUN til embedded etcd — bruges IKKE med ekstern datastore
+                  # Sekundære servere skal bruge --server for at hente cluster CA fra hele-01
+                  (if i != 0 then [ "--server https://${masterIP}:6443" ] else []) ++ [
                     "--datastore-endpoint=${lib.concatStringsSep "," etcdEndpoints}"
                     "--tls-san ${k3sVip}"
                     "--flannel-backend=wireguard-native"
                     "--disable-cloud-controller"
                     "--disable=local-storage"
                     "--disable=servicelb"
+                    "--kubelet-arg=feature-gates=KubeletInUserNamespace=true"
+                    "--write-kubeconfig-mode=0644"
                   ]
                 );
               };
+
+              services.keepalived = {
+                enable = true;
+                vrrpInstances.K3S_VIP = {
+                  interface = "eth0";
+                  state = if i == 0 then "MASTER" else "BACKUP";
+                  virtualRouterId = 51;
+                  priority = 100 - (i * 10); # hele-01=100, hele-02=90, hele-03=80
+                  virtualIps = [{ addr = "${k3sVip}/24"; }];
+                };
+              };
+
+              networking.firewall.extraInputRules = "meta l4proto 112 accept";
+              networking.firewall.extraForwardRules = "meta l4proto 112 accept";
             }) 
           ];
         };
@@ -108,8 +119,9 @@
             ({ ... }: {
               networking.hostName = name;
               services.k3s = {
-                enable     = true;
-                role       = "agent";
+                enable      = true;
+                role        = "agent";
+                extraFlags  = "--kubelet-arg=feature-gates=KubeletInUserNamespace=true";
                 serverAddr = "https://${k3sVip}:6443";
                 token      = k3sToken;
               };
