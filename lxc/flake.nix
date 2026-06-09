@@ -132,6 +132,7 @@
                 serverAddr = "https://${k3sVip}:6443";
                 token      = k3sToken;
               };
+              networking.firewall.allowedUDPPorts = [ 51820 ];
             }) 
           ];
         };
