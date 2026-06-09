@@ -111,6 +111,7 @@
 
               networking.firewall.extraInputRules = "meta l4proto 112 accept";
               networking.firewall.extraForwardRules = "meta l4proto 112 accept";
+              networking.firewall.allowedUDPPorts = [ 8472 51820 51821 ];
             }) 
           ];
         };
